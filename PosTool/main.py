@@ -12,13 +12,23 @@ class Entity(pygame.sprite.Sprite):
         self.image, self.rect = load.image(name, colorkey)
         self.grabbed = False
         self.name = name
+        self.dx = 0
+        self.dy = 0
 
     def update(self):
         if self.grabbed:
             pos = pygame.mouse.get_pos()
-            self.rect.center = pos
-        else:
-            return False
+            offset = (pos[0]-self.dx, pos[1]-self.dy)
+
+            self.rect.topleft = offset
+
+    def grab(self):
+        self.grabbed = True
+
+        pos = pygame.mouse.get_pos()
+        self.dx = pos[0] - self.rect.x
+        self.dy = pos[1] - self.rect.y
+
 
 icon, icon_rect = load.image('cursor.bmp', (255, 255, 255))
 pygame.display.set_icon(icon)
@@ -46,14 +56,16 @@ while True:
 
             for thing in testgroup.sprites():
                 if thing.rect.collidepoint(pos):
-                    thing.grabbed = True
+                    thing.grab()
                     break
+        elif e.type == MOUSEBUTTONDOWN and e.button == 3:
+            testgroup.remove(testgroup.sprites()[0])
         elif e.type == MOUSEBUTTONUP:
             for thing in testgroup.sprites():
                 thing.grabbed = False
 
-    testgroup.clear(screen, background)
     testgroup.update()
+    testgroup.clear(screen, background)
     testgroup.draw(screen)
 
     pygame.display.update()
