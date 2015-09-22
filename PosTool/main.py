@@ -30,28 +30,35 @@ class Entity(pygame.sprite.Sprite):
         self.dy = pos[1] - self.rect.y
 
 
+# load the icon to display up on the top left
 icon, icon_rect = load.image('cursor.bmp', (255, 255, 255))
 pygame.display.set_icon(icon)
 
+# pretty background
 background = pygame.Surface(screen.get_size())
 background.fill((225, 225, 225))
 screen.blit(background, (0, 0))
 
+# construct some test game objects
 test1 = Entity('button_unpressed_green-240x60.bmp')
 test2 = Entity('menu.bmp')
 test3 = Entity('button_unpressed_red-52x60.bmp')
 testgroup = pygame.sprite.RenderClear((test1, test2, test3))
 clock = pygame.time.Clock()
 
+# FPS info
+fps_font, fps_surf, fps_rect = None, None, None
+
+if pygame.font:
+    fps_font = pygame.font.Font(None, 32)
+    fps_surf = fps_font.render('FPS: ???', True, (0, 0, 0))
+    fps_rect = fps_surf.get_rect()
+
 while True:
     clock.tick(60)
 
     for e in pygame.event.get():
-        if e.type == KEYUP and e.key == K_ESCAPE:
-            sys.exit()
-        elif e.type == QUIT:
-            sys.exit()
-        elif e.type == MOUSEBUTTONDOWN and e.button == 1:
+        if e.type == MOUSEBUTTONDOWN and e.button == 1:
             pos = pygame.mouse.get_pos()
 
             for thing in testgroup.sprites():
@@ -63,9 +70,23 @@ while True:
         elif e.type == MOUSEBUTTONUP:
             for thing in testgroup.sprites():
                 thing.grabbed = False
+        elif e.type == KEYUP and e.key == K_ESCAPE:
+            sys.exit()
+        elif e.type == QUIT:
+            sys.exit()
 
-    testgroup.update()
+    # clear necessary wizzles
     testgroup.clear(screen, background)
+    screen.blit(background, fps_rect, fps_rect)
+
+    # update the shizzle wizzles
+    testgroup.update()
+    fps_surf = fps_font.render('FPS: ' + str(int(clock.get_fps())),
+                               True, (0, 0, 0))
+    fps_rect = fps_surf.get_rect()
+
+    # redraw the shizzles
     testgroup.draw(screen)
+    screen.blit(fps_surf, fps_rect)
 
     pygame.display.update()
