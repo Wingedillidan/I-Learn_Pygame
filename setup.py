@@ -8,7 +8,7 @@ config = {
     'author': 'Collin McLean',
     'url': 'http://github.com/wingedillidan/PosTool',
     'author_email': 'wingedillidan@gmail.com',
-    'version': '0.1.1c5',
+    'version': '0.1.1c6',
     'install_requires': ['nose'],
     'packages': ['PosTool'],
     'scripts': [],

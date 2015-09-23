@@ -5,7 +5,7 @@ from screen import screen
 from pygame.locals import *
 
 # global settings
-grid_size = 5
+grid_size = 1
 
 
 class Entity(pygame.sprite.Sprite):
@@ -72,6 +72,24 @@ class EntityPos(pygame.sprite.Sprite):
         self.rect.x, self.rect.y = x, y
 
 
+class EntitySelect(pygame.sprite.Sprite):
+
+    def __init__(self, gameobj):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.ref = gameobj
+        self.image = pygame.Surface(self.ref.image.get_size())
+        self.image.set_colorkey((0, 0, 0), RLEACCEL)
+        self.rect = self.image.get_rect()
+
+    def update(self):
+        self.rect.topleft = self.ref.rect.topleft
+        pointlist = [(0, 0), (self.rect.width-2, 0),
+                     (self.rect.width-2, self.rect.height-2),
+                     (0, self.rect.height-2)]
+
+        pygame.draw.lines(self.image, (0, 0, 255), True, pointlist, 2)
+
 # load the icon to display up on the top left
 icon, icon_rect = load.image('cursor.bmp', (255, 255, 255))
 pygame.display.set_icon(icon)
@@ -87,6 +105,7 @@ test2 = Entity('menu.bmp')
 test3 = Entity('button_unpressed_red-52x60.bmp')
 testgroup = pygame.sprite.RenderClear((test1, test2, test3))
 testgrouppos = pygame.sprite.RenderClear()
+testgroupselect = pygame.sprite.RenderClear()
 clock = pygame.time.Clock()
 
 # FPS info
@@ -103,13 +122,14 @@ while True:
 
     for e in pygame.event.get():
 
-        # ===== MOUSE CLICKED EVENTS =====
+        # =========== MOUSE CLICKED EVENTS ===========
         if e.type == MOUSEBUTTONDOWN:
 
             # did a thing get grabbed?
             if e.button == 1:
                 pos = pygame.mouse.get_pos()
                 sprite_count = len(testgroup.sprites())
+                testgroupselect.empty()
 
                 # check which object got grabbed
                 # TO DO: fix grabbing to select the topmost object first
@@ -118,6 +138,7 @@ while True:
 
                     if thing.rect.collidepoint(pos):
                         thing.grab()
+                        testgroupselect.add(EntitySelect(thing))
                         testgrouppos.add(EntityPos(thing))
                         break
 
@@ -126,7 +147,7 @@ while True:
             elif e.button == 3:
                 testgroup.remove(testgroup.sprites()[0])
 
-        # ===== MOUSE UNCLICKED EVENTS =====
+        # ========== MOUSE UNCLICKED EVENTS ==========
         elif e.type == MOUSEBUTTONUP:
 
             # did grabbing stop?
@@ -136,7 +157,7 @@ while True:
             if len(testgrouppos.sprites()) == 1:
                 testgrouppos.empty()
 
-        # ===== KEY PRESSED EVENTS =====
+        # ============ KEY PRESSED EVENTS ============
         elif e.type == KEYDOWN:
 
             # should I display all positional data?
@@ -144,7 +165,7 @@ while True:
                 for thing in testgroup.sprites():
                     testgrouppos.add(EntityPos(thing))
 
-        # ===== KEY UNPRESSED EVENTS =====
+        # =========== KEY UNPRESSED EVENTS ===========
         elif e.type == KEYUP:
             if e.key == K_LCTRL:
                 testgrouppos.empty()
@@ -152,7 +173,7 @@ while True:
                 pygame.quit()
                 sys.exit()
 
-        # ===== OTHER EVENTS =====
+        # =============== OTHER EVENTS ===============
         elif e.type == QUIT:
             pygame.quit()
             sys.exit()
@@ -165,6 +186,7 @@ while True:
     # update the shizzle wizzles
     testgroup.update()
     testgrouppos.update()
+    testgroupselect.update()
     fps_surf = fps_font.render('FPS: ' + str(int(clock.get_fps())),
                                True, (0, 0, 0))
     fps_rect = fps_surf.get_rect()
@@ -172,6 +194,7 @@ while True:
     # redraw the shizzles
     testgroup.draw(screen)
     testgrouppos.draw(screen)
+    testgroupselect.draw(screen)
     screen.blit(fps_surf, fps_rect)
 
     # update
