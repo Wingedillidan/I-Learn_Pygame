@@ -5,7 +5,7 @@ from screen import screen
 from pygame.locals import *
 
 # global settings
-grid_size = 10
+grid_size = 5
 
 
 class Entity(pygame.sprite.Sprite):
@@ -102,22 +102,41 @@ while True:
     clock.tick(60)
 
     for e in pygame.event.get():
-        # did a thing get grabbed?
-        if e.type == MOUSEBUTTONDOWN and e.button == 1:
-            pos = pygame.mouse.get_pos()
-            sprite_count = len(testgroup.sprites())
 
-            # check which object got grabbed
-            # TO DO: fix grabbing to select the topmost object first
-            for i in xrange(0, sprite_count):
-                thing = testgroup.sprites()[sprite_count-i-1]
+        # ===== MOUSE CLICKED EVENTS =====
+        if e.type == MOUSEBUTTONDOWN:
 
-                if thing.rect.collidepoint(pos):
-                    thing.grab()
-                    testgrouppos.add(EntityPos(thing))
-                    break
+            # did a thing get grabbed?
+            if e.button == 1:
+                pos = pygame.mouse.get_pos()
+                sprite_count = len(testgroup.sprites())
 
-        # keydown case group
+                # check which object got grabbed
+                # TO DO: fix grabbing to select the topmost object first
+                for i in xrange(0, sprite_count):
+                    thing = testgroup.sprites()[sprite_count-i-1]
+
+                    if thing.rect.collidepoint(pos):
+                        thing.grab()
+                        testgrouppos.add(EntityPos(thing))
+                        break
+
+            # test case for removing stuff
+            # will break if clicked 4 times
+            elif e.button == 3:
+                testgroup.remove(testgroup.sprites()[0])
+
+        # ===== MOUSE UNCLICKED EVENTS =====
+        elif e.type == MOUSEBUTTONUP:
+
+            # did grabbing stop?
+            for thing in testgroup.sprites():
+                thing.ungrab()
+
+            if len(testgrouppos.sprites()) == 1:
+                testgrouppos.empty()
+
+        # ===== KEY PRESSED EVENTS =====
         elif e.type == KEYDOWN:
 
             # should I display all positional data?
@@ -125,7 +144,7 @@ while True:
                 for thing in testgroup.sprites():
                     testgrouppos.add(EntityPos(thing))
 
-        # keyup case group
+        # ===== KEY UNPRESSED EVENTS =====
         elif e.type == KEYUP:
             if e.key == K_LCTRL:
                 testgrouppos.empty()
@@ -133,19 +152,7 @@ while True:
                 pygame.quit()
                 sys.exit()
 
-        # test case for removing stuff
-        # will break if clicked 4 times
-        elif e.type == MOUSEBUTTONDOWN and e.button == 3:
-            testgroup.remove(testgroup.sprites()[0])
-
-        # did grabbing stop?
-        elif e.type == MOUSEBUTTONUP:
-            for thing in testgroup.sprites():
-                thing.ungrab()
-
-            if len(testgrouppos.sprites()) == 1:
-                testgrouppos.empty()
-
+        # ===== OTHER EVENTS =====
         elif e.type == QUIT:
             pygame.quit()
             sys.exit()
