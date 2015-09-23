@@ -1,6 +1,7 @@
 import pygame
 import load
 import sys
+import pdb
 from screen import screen
 from pygame.locals import *
 
@@ -10,10 +11,27 @@ class Entity(pygame.sprite.Sprite):
     def __init__(self, name, colorkey=(0, 0, 0)):
         pygame.sprite.Sprite.__init__(self)
         self.image, self.rect = load.image(name, colorkey)
+        self.original = self.image
         self.grabbed = False
         self.name = name
         self.dx = 0
         self.dy = 0
+
+        # font information
+        self.font = pygame.font.Font(None, 18)
+        self.font_surface = None
+        self.font_rect = None
+
+    def position(self):
+        """Displays the object's position information in the top left corner
+        of the object"""
+        if self.font_surface:
+            self.image.blit(self.original, self.font_rect, self.font_rect)
+
+        text = '{}, {}'.format(str(self.rect.x), str(self.rect.y))
+        self.font_surface = self.font.render(text, True, (255, 255, 255))
+        self.font_rect = self.font_surface.get_rect()
+        self.image.blit(self.font_surface, self.font_rect)
 
     def update(self):
         if self.grabbed:
@@ -21,6 +39,7 @@ class Entity(pygame.sprite.Sprite):
             offset = (pos[0]-self.dx, pos[1]-self.dy)
 
             self.rect.topleft = offset
+            self.position()
 
     def grab(self):
         self.grabbed = True
@@ -28,6 +47,9 @@ class Entity(pygame.sprite.Sprite):
         pos = pygame.mouse.get_pos()
         self.dx = pos[0] - self.rect.x
         self.dy = pos[1] - self.rect.y
+
+    def ungrab(self):
+        self.grabbed = False
 
 
 # load the icon to display up on the top left
@@ -69,7 +91,7 @@ while True:
             testgroup.remove(testgroup.sprites()[0])
         elif e.type == MOUSEBUTTONUP:
             for thing in testgroup.sprites():
-                thing.grabbed = False
+                thing.ungrab()
         elif e.type == KEYUP and e.key == K_ESCAPE:
             sys.exit()
         elif e.type == QUIT:
