@@ -4,6 +4,9 @@ import sys
 from screen import screen
 from pygame.locals import *
 
+# global settings
+grid_size = 10
+
 
 class Entity(pygame.sprite.Sprite):
     """A game object class for cases where objects need to be clicked,
@@ -23,9 +26,14 @@ class Entity(pygame.sprite.Sprite):
     def update(self):
         if self.grabbed:
             pos = pygame.mouse.get_pos()
-            offset = (pos[0]-self.dx, pos[1]-self.dy)
+            gridx = pos[0]-self.dx
+            gridy = pos[1]-self.dy
 
-            self.rect.topleft = offset
+            if grid_size > 1:
+                gridx = gridx - (gridx % grid_size)
+                gridy = gridy - (gridy % grid_size)
+
+            self.rect.topleft = gridx, gridy
 
     def grab(self):
         self.grabbed = True
@@ -97,14 +105,33 @@ while True:
         # did a thing get grabbed?
         if e.type == MOUSEBUTTONDOWN and e.button == 1:
             pos = pygame.mouse.get_pos()
+            sprite_count = len(testgroup.sprites())
 
             # check which object got grabbed
             # TO DO: fix grabbing to select the topmost object first
-            for thing in testgroup.sprites():
+            for i in xrange(0, sprite_count):
+                thing = testgroup.sprites()[sprite_count-i-1]
+
                 if thing.rect.collidepoint(pos):
                     thing.grab()
                     testgrouppos.add(EntityPos(thing))
                     break
+
+        # keydown case group
+        elif e.type == KEYDOWN:
+
+            # should I display all positional data?
+            if e.key == K_LCTRL:
+                for thing in testgroup.sprites():
+                    testgrouppos.add(EntityPos(thing))
+
+        # keyup case group
+        elif e.type == KEYUP:
+            if e.key == K_LCTRL:
+                testgrouppos.empty()
+            elif e.key == K_ESCAPE:
+                pygame.quit()
+                sys.exit()
 
         # test case for removing stuff
         # will break if clicked 4 times
@@ -115,12 +142,12 @@ while True:
         elif e.type == MOUSEBUTTONUP:
             for thing in testgroup.sprites():
                 thing.ungrab()
+
+            if len(testgrouppos.sprites()) == 1:
                 testgrouppos.empty()
 
-        # quit cases
-        elif e.type == KEYUP and e.key == K_ESCAPE:
-            sys.exit()
         elif e.type == QUIT:
+            pygame.quit()
             sys.exit()
 
     # clear necessary wizzles
