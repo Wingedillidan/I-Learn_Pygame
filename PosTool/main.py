@@ -33,7 +33,9 @@ class Entity(pygame.sprite.Sprite):
                 gridx = gridx - (gridx % grid_size)
                 gridy = gridy - (gridy % grid_size)
 
-            self.rect.topleft = gridx, gridy
+            if not self.rect.topleft == (gridx, gridy):
+                self.rect.topleft = gridx, gridy
+                return self.rect
 
     def grab(self):
         self.grabbed = True
@@ -83,12 +85,11 @@ class EntitySelect(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update(self):
-        self.rect.topleft = self.ref.rect.topleft
-        pointlist = [(0, 0), (self.rect.width-2, 0),
-                     (self.rect.width-2, self.rect.height-2),
-                     (0, self.rect.height-2)]
+        if not self.rect.topleft == self.ref.rect.topleft:
+            self.rect.topleft = self.ref.rect.topleft
+            rect = (0, 0, self.rect.width-1, self.rect.height-1)
 
-        pygame.draw.lines(self.image, (0, 0, 255), True, pointlist, 2)
+            pygame.draw.rect(self.image, (0, 0, 255), rect, 2)
 
 # load the icon to display up on the top left
 icon, icon_rect = load.image('cursor.bmp', (255, 255, 255))
@@ -106,6 +107,7 @@ test3 = Entity('button_unpressed_red-52x60.bmp')
 testgroup = pygame.sprite.RenderClear((test1, test2, test3))
 testgrouppos = pygame.sprite.RenderClear()
 testgroupselect = pygame.sprite.RenderClear()
+updatelist = []
 clock = pygame.time.Clock()
 
 # FPS info
@@ -182,9 +184,15 @@ while True:
     testgroup.clear(screen, background)
     testgrouppos.clear(screen, background)
     screen.blit(background, fps_rect, fps_rect)
+    updatelist = []
 
     # update the shizzle wizzles
-    testgroup.update()
+    for thing in testgroup.sprites():
+        check = thing.update()
+
+        if check:
+            updatelist.append(check)
+
     testgrouppos.update()
     testgroupselect.update()
     fps_surf = fps_font.render('FPS: ' + str(int(clock.get_fps())),
@@ -198,4 +206,4 @@ while True:
     screen.blit(fps_surf, fps_rect)
 
     # update
-    pygame.display.update()
+    pygame.display.update(updatelist)
