@@ -1,11 +1,9 @@
 import pygame
 import load
 import sys
+import entities
 from screen import screen
 from pygame.locals import *
-
-# global settings
-grid_size = 5
 
 # global constants
 WHITE = (255, 255, 255)
@@ -15,111 +13,20 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
 
-class Entity(pygame.sprite.Sprite):
-    """A game object class for cases where objects need to be clicked,
-    dragged, and move based on cursor position"""
-
-    def __init__(self, name, colorkey=(0, 0, 0)):
-        pygame.sprite.Sprite.__init__(self)
-        self.image, self.rect = load.image(name, colorkey)
-        self.original = self.image
-        self.grabbed = False
-        self.name = name
-
-        # where the cursor is in relation to the object's top left pixel
-        self.dx = 0
-        self.dy = 0
-
-    def update(self):
-        if self.grabbed:
-            pos = pygame.mouse.get_pos()
-            gridx = pos[0]-self.dx
-            gridy = pos[1]-self.dy
-
-            if grid_size > 1:
-                gridx = gridx - (gridx % grid_size)
-                gridy = gridy - (gridy % grid_size)
-
-            if not self.rect.topleft == (gridx, gridy):
-                old_rect = self.rect.copy()
-                self.rect.topleft = gridx, gridy
-                return old_rect, self.rect
-
-    def grab(self):
-        self.grabbed = True
-
-        # dx, dy enable the object to be moved smoothly and without it
-        # jumping to a preset movement point (uhhh, do I need this comment?)
-        pos = pygame.mouse.get_pos()
-        self.dx = pos[0] - self.rect.x
-        self.dy = pos[1] - self.rect.y
-
-    def ungrab(self):
-        self.grabbed = False
-
-
-class Entity_Text(pygame.sprite.Sprite):
-    """generates text surfaces/rects/sprites"""
-
-    def __init__(self, size, color, background):
-        # initiate pygame.sprite
-        pygame.sprite.Sprite.__init__(self)
-
-        self.color = color
-        self.background = background
-        self.font = pygame.font.Font(None, size)
-        self.image = self.font.render('...', True, color)
-        self.rect = self.image.get_rect()
-
-
-class EntityPos(Entity_Text):
-    """Displays position information relative to the given reference object
-    in the form of text on the topright corner of the object."""
-
-    def __init__(self, gameobj, size=18, color=WHITE, background=BLACK):
-        super(EntityPos, self).__init__(size, color, background)
-        self.ref = gameobj
-
-    def update(self):
-        # update & position
-        x, y = self.ref.rect.x, self.ref.rect.y
-        text = '{}, {}'.format(x, y)
-        self.image = self.font.render(text, True, self.color, self.background)
-        self.rect.x, self.rect.y = x, y
-
-
-class EntitySelect(pygame.sprite.Sprite):
-
-    def __init__(self, gameobj):
-        pygame.sprite.Sprite.__init__(self)
-
-        self.ref = gameobj
-        self.image = pygame.Surface(self.ref.image.get_size())
-        self.image.set_colorkey((0, 0, 0), RLEACCEL)
-        self.rect = self.image.get_rect()
-
-    def update(self):
-        if not self.rect.topleft == self.ref.rect.topleft:
-            self.rect.topleft = self.ref.rect.topleft
-            rect = (0, 0, self.rect.width-1, self.rect.height-1)
-
-            pygame.draw.rect(self.image, (0, 0, 255), rect, 2)
-
-
 def main():
     # load the icon to display up on the top left
-    icon, icon_rect = load.image('cursor.bmp', (255, 255, 255))
+    icon, icon_rect = load.image('cursor.bmp', WHITE)
     pygame.display.set_icon(icon)
 
     # pretty background
     background = pygame.Surface(screen.get_size())
-    background.fill((225, 225, 225))
+    background.fill(WHITE)
     screen.blit(background, (0, 0))
 
     # construct some test game objects
-    test1 = Entity('button_unpressed_green-240x60.bmp')
-    test2 = Entity('menu.bmp')
-    test3 = Entity('button_unpressed_red-52x60.bmp')
+    test1 = entities.Item('button_unpressed_green-240x60.bmp')
+    test2 = entities.Item('menu.bmp')
+    test3 = entities.Item('button_unpressed_red-52x60.bmp')
     testgroup = pygame.sprite.RenderClear((test1, test2, test3))
     testgrouppos = pygame.sprite.RenderClear()
     testgroupselect = pygame.sprite.RenderClear()
@@ -128,8 +35,11 @@ def main():
     # FPS info
     fps_font, fps_surf, fps_rect = None, None, None
     fps_font = pygame.font.Font(None, 32)
-    fps_surf = fps_font.render('FPS: ???', True, (0, 0, 0))
+    fps_surf = fps_font.render('FPS: ???', True, BLACK)
     fps_rect = fps_surf.get_rect()
+
+    # dragbox
+    selectbox = None
 
     # main loop
     while True:
@@ -153,9 +63,13 @@ def main():
 
                         if thing.rect.collidepoint(pos):
                             thing.grab()
-                            testgroupselect.add(EntitySelect(thing))
-                            testgrouppos.add(EntityPos(thing))
+                            testgroupselect.add(entities.SelectItem(thing))
+                            testgrouppos.add(entities.TextPos(thing))
                             break
+
+                # if nothing was selected, do a dragbox
+                if not testgroupselect.sprites():
+                    selectbox = entities.SelectBox()
 
             # ========== MOUSE UNCLICKED EVENTS ==========
             elif e.type == MOUSEBUTTONUP:
@@ -167,13 +81,15 @@ def main():
                 if len(testgrouppos.sprites()) == 1:
                     testgrouppos.empty()
 
+                selectbox = None
+
             # ============ KEY PRESSED EVENTS ============
             elif e.type == KEYDOWN:
 
-                # should I display all positional data?
+                # display all positional data
                 if e.key == K_LCTRL:
                     for thing in testgroup.sprites():
-                        testgrouppos.add(EntityPos(thing))
+                        testgrouppos.add(entities.TextPos(thing))
 
                 # delete stuff
                 if e.key == K_DELETE:
@@ -198,16 +114,21 @@ def main():
         # clear necessary wizzles
         testgroup.clear(screen, background)
         testgrouppos.clear(screen, background)
-        screen.blit(background, fps_rect, fps_rect)
+        screen.blit(background, fps_rect)
+        if selectbox:
+            screen.blit(background, selectbox.rect, selectbox.rect)
 
         testgroup.update()
         testgrouppos.update()
         testgroupselect.update()
         fps_surf = fps_font.render('FPS: ' + str(int(clock.get_fps())),
-                                   True, (0, 0, 0))
+                                   True, BLACK)
         fps_rect = fps_surf.get_rect()
 
         # redraw the shizzles
+        if selectbox:
+            selectbox.update()
+            screen.blit(selectbox.image, selectbox.rect)
         testgroup.draw(screen)
         testgroupselect.draw(screen)
         testgrouppos.draw(screen)
