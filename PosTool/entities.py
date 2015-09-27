@@ -22,6 +22,7 @@ class Item(pygame.sprite.Sprite):
         self.original = self.image
         self.grabbed = False
         self.name = name
+        self.selected = False
 
         # where the cursor is in relation to the object's top left pixel
         self.dx = 0
@@ -101,11 +102,11 @@ class SelectBox(Select):
 
         if height < 0:
             height = abs(height)
-            x -= height
+            y -= height
 
         if width < 0:
             width = abs(width)
-            y -= width
+            x -= width
 
         self.image = pygame.Surface((width, height))
         self.image.set_colorkey(BLACK)
