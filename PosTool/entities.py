@@ -5,7 +5,7 @@ from pygame.locals import *
 
 # global settings
 # TODO: move this back into main.py
-grid_size = 5
+grid_size = 1
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -119,14 +119,26 @@ class SelectBox(Select):
 class Text(pygame.sprite.Sprite):
     """generates text surfaces/rects/sprites"""
 
-    def __init__(self, size, color, background):
+    def __init__(self, size, color, font=None):
         # initiate pygame.sprite
         pygame.sprite.Sprite.__init__(self)
 
         self.color = color
-        self.background = background
-        self.font = pygame.font.Font(None, size)
+        self.font = pygame.font.Font(font, size)
         self.image = self.font.render('...', True, color)
+        self.rect = self.image.get_rect()
+
+
+class TextFPS(Text):
+    """updates the fps information"""
+
+    def __init__(self, clock, size, color, font=None):
+        super(TextFPS, self).__init__(size, color, font)
+        self.ref = clock
+
+    def update(self):
+        text = "FPS: " + str(int(self.ref.get_fps()))
+        self.image = self.font.render(text, True, self.color)
         self.rect = self.image.get_rect()
 
 
@@ -134,13 +146,16 @@ class TextPos(Text):
     """Displays position information relative to the given reference object
     in the form of text on the topright corner of the object."""
 
-    def __init__(self, gameobj, size=18, color=WHITE, background=BLACK):
-        super(TextPos, self).__init__(size, color, background)
+    def __init__(self, gameobj, size, color,
+                 background, font=None):
+        super(TextPos, self).__init__(size, color, font)
         self.ref = gameobj
+        self.background = background
 
     def update(self):
         # update & position
         x, y = self.ref.rect.x, self.ref.rect.y
         text = '{}, {}'.format(x, y)
         self.image = self.font.render(text, True, self.color, self.background)
+        self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
