@@ -1,11 +1,6 @@
 import load
 import pygame
-from screen import screen
 from pygame.locals import *
-
-# global settings
-# TODO: move this back into main.py
-grid_size = 1
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -16,17 +11,33 @@ class Item(pygame.sprite.Sprite):
     """A game object class for cases where objects need to be clicked,
     dragged, and move based on cursor position"""
 
-    def __init__(self, name, colorkey=BLACK):
+    def __init__(self, name, grid, colorkey=BLACK):
         pygame.sprite.Sprite.__init__(self)
         self.image, self.rect = load.image(name, colorkey)
         self.original = self.image
+        self.grid = grid
         self.grabbed = False
-        self.name = name
         self.selected = False
+        self.nudge = None
 
         # where the cursor is in relation to the object's top left pixel
         self.dx = 0
         self.dy = 0
+
+    def nudger(self):
+        x, y = 0, 0
+
+        for direction in self.nudge:
+            if direction is 'left':
+                x -= self.grid
+            elif direction is 'right':
+                x += self.grid
+            elif direction is 'up':
+                y -= self.grid
+            elif direction is 'down':
+                y += self.grid
+
+        self.rect = self.rect.move(x, y)
 
     def update(self):
         if self.grabbed:
@@ -34,12 +45,15 @@ class Item(pygame.sprite.Sprite):
             gridx = pos[0]-self.dx
             gridy = pos[1]-self.dy
 
-            if grid_size > 1:
-                gridx = gridx - (gridx % grid_size)
-                gridy = gridy - (gridy % grid_size)
+            if self.grid > 1:
+                gridx = gridx - (gridx % self.grid)
+                gridy = gridy - (gridy % self.grid)
 
             if not self.rect.topleft == (gridx, gridy):
                 self.rect.topleft = gridx, gridy
+        elif self.nudge:
+            self.nudger()
+            self.nudge = None
 
     def grab(self):
         self.grabbed = True

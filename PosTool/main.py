@@ -2,11 +2,12 @@ import pygame
 import load
 import sys
 import entities
-from screen import screen
 from pygame.locals import *
 
-# TODO: Rather than basing selection status posdisplaysake it so that the
-# status is only updaposdisplaysItem.selection boolean
+pygame.init()
+
+# global settings
+grid_size = 10
 
 # global constants
 WHITE = (255, 255, 255)
@@ -16,44 +17,10 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
 
-def deselector(selectionlist, poslist):
-    for item in selectionlist.sprites():
-        item.ref.selected = False
-    selectionlist.empty()
-    poslist.empty()
-
-
-def selector(selectionlist, poslist, item):
-    item.selected = True
-    selectionlist.add(entities.SelectItem(item))
-    poslist.add(entities.TextPos(item, 18, WHITE, BLACK))
-
-
-def selectbot(selectionlist, poslist, item=None):
-    # if the selection has been ban boxed
-    if isinstance(item, (list, tuple)):
-        deselector(selectionlist, poslist)
-
-        for i in item:
-            selector(selectionlist, poslist, i)
-
-    # single-item selections
-    elif item:
-        if item.selected is False:
-            deselector(selectionlist, poslist)
-
-            selector(selectionlist, poslist, item)
-            item.grab()
-        else:
-            for i in selectionlist.sprites():
-                i.ref.grab()
-
-    # nothing was selected
-    else:
-        deselector(selectionlist, poslist)
-
-
 def main():
+    screen = pygame.display.set_mode((1600, 900))
+    pygame.display.set_caption('PosTool')
+
     # load the icon to display up on the top left
     icon, icon_rect = load.image('cursor.bmp', WHITE)
     pygame.display.set_icon(icon)
@@ -64,10 +31,13 @@ def main():
     screen.blit(background, (0, 0))
 
     # construct some test game objects
-    test1 = entities.Item('button_unpressed_green-240x60.bmp')
-    test2 = entities.Item('menu.bmp')
-    test3 = entities.Item('button_unpressed_red-52x60.bmp')
+    test1 = entities.Item('button_unpressed_green-240x60.bmp', grid_size)
+    test2 = entities.Item('menu.bmp', grid_size)
+    test3 = entities.Item('button_unpressed_red-52x60.bmp', grid_size)
     items = pygame.sprite.RenderClear((test1, test2, test3))
+    for i in xrange(25):
+        thing = entities.Item('button_unpressed_red-52x60.bmp', grid_size)
+        items.add(thing)
     posdisplays = pygame.sprite.RenderClear()
     selections = pygame.sprite.RenderClear()
     clock = pygame.time.Clock()
@@ -77,26 +47,57 @@ def main():
 
     # dragbox
     selectbox = None
+    delay = 0
 
     # main loop
     while True:
         clock.tick(60)
 
-        for e in pygame.event.get():
+        # ===============================================================
+        # ------------------------- HOLDED KEYS -------------------------
+        # ===============================================================
 
+        if selections.sprites():
+            if not delay:
+                keys = pygame.key.get_pressed()
+                result = []
+
+                # ====================== MOVEMENTZ ======================
+                if keys[K_LEFT] or keys[K_a]:
+                    result.append('left')
+                if keys[K_RIGHT] or keys[K_d]:
+                    result.append('right')
+                if keys[K_UP] or keys[K_w]:
+                    result.append('up')
+                if keys[K_DOWN] or keys[K_s]:
+                    result.append('down')
+
+                for item in selections.sprites():
+                    item.ref.nudge = result
+
+                delay = 2
+            else:
+                delay -= 1
+
+        for e in pygame.event.get():
             # ===========================================================
             # -------------------- MOUSE BUTTON DOWN --------------------
             # ===========================================================
             if e.type == MOUSEBUTTONDOWN:
 
-                # ====================== LEFT CLICK =====================
+                # ==================== LEFT CLICK ===================
                 if e.button == 1:
+                    keys = pygame.key.get_pressed()
+                    ctrl = False
                     no_select = True
                     pos = pygame.mouse.get_pos()
 
+                    if keys[K_LCTRL]:
+                        ctrl = True
+
                     for item in reversed(items.sprites()):
                         if item.rect.collidepoint(pos):
-                            selectbot(selections, posdisplays, item)
+                            load.selectbot(selections, posdisplays, item, ctrl)
                             no_select = False
                             break
 
@@ -111,25 +112,27 @@ def main():
                     item.ref.ungrab()
 
                 if selectbox:
+                    keys = pygame.key.get_pressed()
+                    ctrl = False
                     result = []
 
                     for item in items.sprites():
                         if selectbox.rect.colliderect(item.rect):
                             result.append(item)
+
                     screen.blit(background, selectbox.rect, selectbox.rect)
                     selectbox = None
 
-                    if result:
-                        selectbot(selections, posdisplays, result)
-                    else:
-                        selectbot(selections, posdisplays)
+                    if keys[K_LCTRL]:
+                        ctrl = True
+                    load.selectbot(selections, posdisplays, result, ctrl)
 
             # ===========================================================
             # ------------------------- KEY DOWN ------------------------
             # ===========================================================
             elif e.type == KEYDOWN:
 
-                # ======================== DELETE =======================
+                # ====================== DELETE =====================
                 if e.key == K_DELETE:
                     for item in selections.sprites():
                         item.ref.kill()
@@ -137,7 +140,7 @@ def main():
                     selections.empty()
                     posdisplays.empty()
 
-                # ======================== ESCAPE =======================
+                # ====================== ESCAPE =====================
                 elif e.key == K_ESCAPE:
                     pygame.quit()
                     sys.exit()

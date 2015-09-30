@@ -1,6 +1,6 @@
 import os
 import pygame
-from screen import screen
+import entities
 from pygame.locals import *
 
 if not pygame.font:
@@ -9,6 +9,13 @@ if not pygame.mixer:
     print "Warning, sounds disabled."
 
 path = '..\data'
+
+# global constants
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 
 
 class LoadError(Exception):
@@ -52,3 +59,41 @@ def sound(name):
         raise LoadError(message)
 
     return sound
+
+
+def _deselector(selectionlist, poslist, ctrl):
+    if not ctrl:
+        for item in selectionlist.sprites():
+            item.ref.selected = False
+        selectionlist.empty()
+        poslist.empty()
+
+
+def _selector(selectionlist, poslist, item):
+    item.selected = True
+    selectionlist.add(entities.SelectItem(item))
+    poslist.add(entities.TextPos(item, 18, WHITE, BLACK))
+
+
+def selectbot(selectionlist, poslist, item=None, ctrl=False):
+    # if the selection has been ban boxed
+    if isinstance(item, (list, tuple)):
+        _deselector(selectionlist, poslist, ctrl)
+
+        for i in item:
+            _selector(selectionlist, poslist, i)
+
+    # single-item selections
+    elif item:
+        if item.selected is False:
+            _deselector(selectionlist, poslist, ctrl)
+
+            _selector(selectionlist, poslist, item)
+            item.grab()
+        else:
+            for i in selectionlist.sprites():
+                i.ref.grab()
+
+    # nothing was selected
+    else:
+        _deselector(selectionlist, poslist, ctrl)
