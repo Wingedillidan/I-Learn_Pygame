@@ -7,24 +7,44 @@ BLACK = (0, 0, 0)
 BLUE = (0, 0, 255)
 
 
-class Item(pygame.sprite.Sprite):
+class ItemPlain(pygame.sprite.DirtySprite):
+    """A game object that is nothing but a solid color rect"""
+
+    def __init__(self, grid, colorkey, name=None, size_x=100, size_y=100):
+        pygame.sprite.DirtySprite.__init__(self)
+        if name:
+            self.image, self.rect = load.image(name, colorkey)
+        else:
+            self.image = pygame.Surface((size_x, size_y))
+            self.rect = self.image.get_rect()
+        self.grid = grid
+
+
+class ItemMenuBlock(ItemPlain):
+    """The base for the right-click menu"""
+
+    def __init__(self, grid, size_x):
+        super(ItemMenuBlock, self).__init__(grid, None, None, size_x)
+
+
+class Item(ItemPlain):
     """A game object class for cases where objects need to be clicked,
     dragged, and move based on cursor position"""
 
     def __init__(self, name, grid, colorkey=BLACK):
-        pygame.sprite.Sprite.__init__(self)
-        self.image, self.rect = load.image(name, colorkey)
+        super(Item, self).__init__(grid, colorkey, name)
         self.original = self.image
-        self.grid = grid
         self.grabbed = False
         self.selected = False
         self.nudge = None
+        self.dirty = 1
 
         # where the cursor is in relation to the object's top left pixel
         self.dx = 0
         self.dy = 0
 
     def nudger(self):
+        self.dirty = 1
         x, y = 0, 0
 
         for direction in self.nudge:
@@ -41,6 +61,7 @@ class Item(pygame.sprite.Sprite):
 
     def update(self):
         if self.grabbed:
+            self.dirty = 1
             pos = pygame.mouse.get_pos()
             gridx = pos[0]-self.dx
             gridy = pos[1]-self.dy
@@ -68,17 +89,19 @@ class Item(pygame.sprite.Sprite):
         self.grabbed = False
 
 
-class Select(pygame.sprite.Sprite):
+class Select(pygame.sprite.DirtySprite):
     """Draw a selection box around objects"""
 
     def __init__(self, border=2):
-        pygame.sprite.Sprite.__init__(self)
+        pygame.sprite.DirtySprite.__init__(self)
 
         self.image.set_colorkey(BLACK, RLEACCEL)
         self.rect = self.image.get_rect()
         self.border = border
+        self.dirty = 1
 
     def update(self):
+        self.dirty = 1
         half = self.border / 2
 
         rect = (0, 0, self.rect.width-half,
@@ -130,29 +153,68 @@ class SelectBox(Select):
         super(SelectBox, self).update()
 
 
-class Text(pygame.sprite.Sprite):
+class Text(pygame.sprite.DirtySprite):
     """generates text surfaces/rects/sprites"""
 
-    def __init__(self, size, color, font=None):
+    def __init__(self, text, size, color, font=None):
         # initiate pygame.sprite
-        pygame.sprite.Sprite.__init__(self)
+        pygame.sprite.DirtySprite.__init__(self)
 
         self.color = color
+        self.text = text
+        self.dirty = 1
         self.font = pygame.font.Font(font, size)
-        self.image = self.font.render('...', True, color)
+        self.image = self.font.render(self.text, True, color)
         self.rect = self.image.get_rect()
+
+
+class TextMenu(Text):
+    """the textisms located within the menus"""
+
+    color_hovered = (225, 225, 255)
+    color_unhovered = (175, 175, 175)
+
+    def __init__(self, text, size, width, color=BLACK, font=None):
+        super(TextMenu, self).__init__(text, size, color, font)
+        self.raw_image = pygame.Surface((width, size))
+        self.raw_image.fill(self.color_unhovered)
+        self.image = self.font.render(self.text, True, color)
+        temprect = self.image.get_rect()
+
+        self.raw_image.blit(self.image, temprect)
+        self.image = self.raw_image
+        self.rect = self.image.get_rect()
+        self.hovered = False
+        self.disabled = False
+
+    def hover(self):
+        if not self.hovered:
+            self.raw_image.fill(self.color_hovered)
+            self.raw_image.blit(self.text, self.rect)
+            self.image = self.raw_image
+
+            self.dirty = 1
+
+    def unhover(self):
+        if self.hovered:
+            self.raw_image.fill(self.color_unhovered)
+            self.raw_image.blit(self.text, self.rect)
+            self.image = self.raw_image
+
+            self.dirty = 1
 
 
 class TextFPS(Text):
     """updates the fps information"""
 
-    def __init__(self, clock, size, color, font=None):
-        super(TextFPS, self).__init__(size, color, font)
+    def __init__(self, clock, size, color, font=None, text='...'):
+        super(TextFPS, self).__init__(text, size, color, font)
         self.ref = clock
 
     def update(self):
-        text = "FPS: " + str(int(self.ref.get_fps()))
-        self.image = self.font.render(text, True, self.color)
+        self.dirty = 1
+        self.text = "FPS: " + str(int(self.ref.get_fps()))
+        self.image = self.font.render(self.text, True, self.color)
         self.rect = self.image.get_rect()
 
 
@@ -161,15 +223,18 @@ class TextPos(Text):
     in the form of text on the topright corner of the object."""
 
     def __init__(self, gameobj, size, color,
-                 background, font=None):
-        super(TextPos, self).__init__(size, color, font)
+                 background, font=None, text='...'):
+        super(TextPos, self).__init__(text, size, color, font)
         self.ref = gameobj
         self.background = background
 
     def update(self):
+        self.dirty = 1
+
         # update & position
         x, y = self.ref.rect.x, self.ref.rect.y
-        text = '{}, {}'.format(x, y)
-        self.image = self.font.render(text, True, self.color, self.background)
+        self.text = '{}, {}'.format(x, y)
+        self.image = self.font.render(self.text, True, self.color,
+                                      self.background)
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y

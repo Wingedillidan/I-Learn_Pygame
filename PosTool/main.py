@@ -2,6 +2,8 @@ import pygame
 import load
 import sys
 import entities
+import menu
+from screen import screen
 from pygame.locals import *
 
 pygame.init()
@@ -18,9 +20,6 @@ BLUE = (0, 0, 255)
 
 
 def main():
-    screen = pygame.display.set_mode((1600, 900))
-    pygame.display.set_caption('PosTool')
-
     # load the icon to display up on the top left
     icon, icon_rect = load.image('cursor.bmp', WHITE)
     pygame.display.set_icon(icon)
@@ -29,25 +28,34 @@ def main():
     background = pygame.Surface(screen.get_size())
     background.fill(WHITE)
     screen.blit(background, (0, 0))
+    pygame.display.update()
 
     # construct some test game objects
     test1 = entities.Item('button_unpressed_green-240x60.bmp', grid_size)
     test2 = entities.Item('menu.bmp', grid_size)
     test3 = entities.Item('button_unpressed_red-52x60.bmp', grid_size)
-    items = pygame.sprite.RenderClear((test1, test2, test3))
+    items = pygame.sprite.RenderUpdates((test1, test2, test3))
     for i in xrange(25):
         thing = entities.Item('button_unpressed_red-52x60.bmp', grid_size)
         items.add(thing)
-    posdisplays = pygame.sprite.RenderClear()
-    selections = pygame.sprite.RenderClear()
+    posdisplays = pygame.sprite.RenderUpdates()
+    selections = pygame.sprite.RenderUpdates()
     clock = pygame.time.Clock()
+
+    # dirty rects
+    dirtyitems = []
+    dirtyselections = []
+    dirtypos = []
+    dirtystats = []
 
     # FPS info
     fps = entities.TextFPS(clock, 24, BLACK)
 
     # dragbox
     selectbox = None
-    delay = 0
+
+    # delays
+    nudge_delay = 0
 
     # main loop
     while True:
@@ -58,7 +66,7 @@ def main():
         # ===============================================================
 
         if selections.sprites():
-            if not delay:
+            if not nudge_delay:
                 keys = pygame.key.get_pressed()
                 result = []
 
@@ -75,15 +83,16 @@ def main():
                 for item in selections.sprites():
                     item.ref.nudge = result
 
-                delay = 2
+                nudge_delay = 3
             else:
-                delay -= 1
+                nudge_delay -= 1
 
         for e in pygame.event.get():
             # ===========================================================
             # -------------------- MOUSE BUTTON DOWN --------------------
             # ===========================================================
             if e.type == MOUSEBUTTONDOWN:
+                nudge_delay = 3
 
                 # ==================== LEFT CLICK ===================
                 if e.button == 1:
@@ -103,6 +112,10 @@ def main():
 
                     if no_select:
                         selectbox = entities.SelectBox()
+
+                # =================== RIGHT CLICK ===================
+                if e.button == 3:
+                    menu.right_click(['test'])
 
             # ===========================================================
             # --------------------- MOUSE BUTTON UP ---------------------
@@ -157,6 +170,7 @@ def main():
         posdisplays.clear(screen, background)
         screen.blit(background, fps.rect, fps.rect)
         if selectbox:
+            dirtystats = [selectbox.rect, None]
             screen.blit(background, selectbox.rect, selectbox.rect)
 
         items.update()
@@ -164,17 +178,20 @@ def main():
         selections.update()
         fps.update()
 
-        # redraw the shizzles
-        items.draw(screen)
-        selections.draw(screen)
-        posdisplays.draw(screen)
+        dirtyitems = items.draw(screen)
+        dirtyselections = selections.draw(screen)
+        dirtypos = posdisplays.draw(screen)
         screen.blit(fps.image, fps.rect)
         if selectbox:
             selectbox.update()
+            dirtystats[1] = selectbox.rect
             screen.blit(selectbox.image, selectbox.rect)
 
         # update
-        pygame.display.update()
+        pygame.display.update(dirtyitems)
+        pygame.display.update(dirtypos)
+        pygame.display.update(dirtyselections)
+        pygame.display.update(dirtystats)
 
 if __name__ == "__main__":
     main()
