@@ -9,7 +9,7 @@ from pygame.locals import *
 pygame.init()
 
 # global settings
-grid_size = 10
+grid_size = 5
 
 # global constants
 WHITE = (255, 255, 255)
@@ -115,7 +115,11 @@ def main():
 
                 # =================== RIGHT CLICK ===================
                 if e.button == 3:
-                    menu.right_click(['test'])
+                    while True:
+                        result = menu.right_click(['test', 'PIE'])
+
+                        if not result:
+                            break
 
             # ===========================================================
             # --------------------- MOUSE BUTTON UP ---------------------

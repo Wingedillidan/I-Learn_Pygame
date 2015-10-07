@@ -125,6 +125,8 @@ class SelectItem(Select):
 class SelectBox(Select):
     """drag and drop UI to select stuffs in an area"""
 
+    dirty = 2
+
     def __init__(self, border=2):
         self.pos_origin = pygame.mouse.get_pos()
         self.image = pygame.Surface((0, 0))
@@ -172,16 +174,17 @@ class TextMenu(Text):
     """the textisms located within the menus"""
 
     color_hovered = (225, 225, 255)
-    color_unhovered = (175, 175, 175)
+    color_unhovered = (200, 200, 200)
 
     def __init__(self, text, size, width, color=BLACK, font=None):
         super(TextMenu, self).__init__(text, size, color, font)
         self.raw_image = pygame.Surface((width, size))
         self.raw_image.fill(self.color_unhovered)
-        self.image = self.font.render(self.text, True, color)
-        temprect = self.image.get_rect()
+        self.imagetext = self.font.render(self.text, True, color)
+        self.recttext = self.imagetext.get_rect()
+        temprect = self.raw_image.get_rect()
 
-        self.raw_image.blit(self.image, temprect)
+        self.raw_image.blit(self.imagetext, temprect)
         self.image = self.raw_image
         self.rect = self.image.get_rect()
         self.hovered = False
@@ -190,18 +193,28 @@ class TextMenu(Text):
     def hover(self):
         if not self.hovered:
             self.raw_image.fill(self.color_hovered)
-            self.raw_image.blit(self.text, self.rect)
+            self.raw_image.blit(self.imagetext, self.recttext)
             self.image = self.raw_image
+            self.hovered = True
 
             self.dirty = 1
 
     def unhover(self):
         if self.hovered:
             self.raw_image.fill(self.color_unhovered)
-            self.raw_image.blit(self.text, self.rect)
+            self.raw_image.blit(self.imagetext, self.recttext)
             self.image = self.raw_image
+            self.hovered = False
 
             self.dirty = 1
+
+    def update(self):
+        pos = pygame.mouse.get_pos()
+
+        if self.rect.collidepoint(pos):
+            self.hover()
+        else:
+            self.unhover()
 
 
 class TextFPS(Text):
